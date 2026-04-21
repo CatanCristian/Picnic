@@ -781,7 +781,12 @@ if (splash) splash.style.display = 'none';
 </script>
 
 <script>
+  // Disinstalla vecchi service worker che potrebbero servire contenuto obsoleto
   if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+    // Registra nuovo SW pulito
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   }
 </script>
