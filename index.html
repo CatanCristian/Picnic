@@ -14,6 +14,8 @@
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <!-- React + Babel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -43,6 +45,12 @@
 const SUPABASE_URL = 'https://rcylaeoojsxobxpiqsrs.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWxhZW9vanN4b2J4cGlxc3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NTMxNjMsImV4cCI6MjA5MjMyOTE2M30.i5ac7YMt8x8lAgBMkxRL2smeUj7xx6cSIhDtyuD3ijw';
 const APP_URL      = 'https://catancristian.github.io/Picnic';
+
+// EmailJS — vai su emailjs.com, crea account gratuito e compila questi valori
+// Istruzioni setup sotto il codice
+const EMAILJS_SERVICE  = 'INSERISCI_SERVICE_ID';   // es. 'service_abc123'
+const EMAILJS_TEMPLATE = 'INSERISCI_TEMPLATE_ID';  // es. 'template_xyz456'
+const EMAILJS_KEY      = 'INSERISCI_PUBLIC_KEY';   // es. 'aBcDeFgHiJkL'
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -483,22 +491,46 @@ const GuestsScreen = ({picnic, setPicnic}) => {
   const invite = async () => {
     if (!email.trim()) return;
     setLoading(true);
+    const guestName = nome.trim() || email.split('@')[0];
     const {data:guest,error} = await sb.from('picnic_guests')
-      .insert({picnic_id:picnic.id,email:email.trim(),name:nome.trim()||email.split('@')[0],status:'pending'})
+      .insert({picnic_id:picnic.id,email:email.trim(),name:guestName,status:'pending'})
       .select().single();
 
     if (!error && guest) {
       setPicnic(p=>({...p,guests:[...p.guests,guest]}));
       const link = `${APP_URL}/?invite=${guest.invite_token}`;
-      const subj = encodeURIComponent(`Sei invitato al picnic: ${picnic.name}!`);
-      const body = encodeURIComponent(
-        `Ciao ${guest.name}!\n\nSei stato invitato al picnic "${picnic.name}".\n\n`+
-        `📅 ${picnic.date_label}   📍 ${picnic.location}\n\n`+
-        `Clicca qui per confermare la tua presenza:\n${link}\n\nA presto! 🧺`
-      );
-      window.open(`mailto:${email.trim()}?subject=${subj}&body=${body}`);
-      setSent(guest.name); setNome(''); setEmail(''); setShowForm(false);
-      setTimeout(()=>setSent(null), 3000);
+
+      // Prova EmailJS prima, poi fallback su mailto
+      let sent = false;
+      if (EMAILJS_KEY !== 'INSERISCI_PUBLIC_KEY') {
+        try {
+          await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+            to_email:  email.trim(),
+            to_name:   guestName,
+            picnic_name: picnic.name,
+            date:      picnic.date_label,
+            location:  picnic.location,
+            invite_link: link,
+          }, EMAILJS_KEY);
+          sent = true;
+        } catch(e) { console.warn('EmailJS error:', e); }
+      }
+
+      if (!sent) {
+        // Fallback: apri mail client
+        const subj = encodeURIComponent(`Sei invitato al picnic: ${picnic.name}!`);
+        const body = encodeURIComponent(
+          `Ciao ${guestName}!\n\nSei stato/a invitato/a al picnic "${picnic.name}".\n\n` +
+          `📅 ${picnic.date_label}   📍 ${picnic.location}\n\n` +
+          `Clicca il link per confermare la tua presenza:\n${link}\n\nA presto! 🧺`
+        );
+        window.location.href = `mailto:${email.trim()}?subject=${subj}&body=${body}`;
+      }
+
+      setSent(guestName); setNome(''); setEmail(''); setShowForm(false);
+      setTimeout(()=>setSent(null), 4000);
+    } else {
+      alert('Errore: ' + (error.message || 'email già invitata?'));
     }
     setLoading(false);
   };
