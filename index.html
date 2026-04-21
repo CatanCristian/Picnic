@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Picnic">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#4A90D9">
+  <title>Picnic Organizer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- React + Babel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body, #root { height: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F0F6FF; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+    #root { max-width: 430px; margin: 0 auto; position: relative; min-height: 100%; background: #F0F6FF; display: flex; flex-direction: column; }
+    button, input { font-family: inherit; }
+    ::-webkit-scrollbar { display: none; }
+    .screen { flex: 1; overflow-y: auto; padding-bottom: 90px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+// ── CONFIG ────────────────────────────────────────────────────
+// Sostituisci con i tuoi valori da Supabase → Project Settings → API
+const SUPABASE_URL = 'INSERISCI_QUI_IL_TUO_URL';
+const SUPABASE_KEY = 'INSERISCI_QUI_LA_TUA_ANON_KEY';
+const APP_URL      = 'https://catancristian.github.io/Picnic';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── THEME ─────────────────────────────────────────────────────
+const T = {
+  bg:'#F0F6FF', card:'#FFFFFF', accent:'#4A90D9',
+  pill:'#E4F0FF', pillText:'#2A6EBB',
+  text:'#1A2540', muted:'#7A90AF', border:'#DDE8F7',
+  hdr:'linear-gradient(160deg,#EBF4FF 0%,#DCEEFF 100%)',
+  err:'#E05555', errBg:'#FFF0F0',
+};
+
+// ── SHARED STYLES ─────────────────────────────────────────────
+const IS = { width:'100%', border:`1px solid ${T.border}`, borderRadius:10, padding:'12px 14px', fontSize:16, color:T.text, outline:'none', background:'#fafcff' };
+const BS = { width:'100%', padding:'13px', borderRadius:12, border:'none', background:T.accent, fontSize:16, fontWeight:700, color:'white', cursor:'pointer', boxShadow:'0 2px 8px rgba(74,144,217,0.3)' };
+
+// ── ICONS ─────────────────────────────────────────────────────
+const Icon = ({ n, size=22, color=T.accent, style={} }) => {
+  const p = {
+    home:<><path d="M3 9.5L12 2l9 7.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z" strokeWidth="1.7" fill="none" stroke={color} strokeLinejoin="round"/><path d="M9 21V12h6v9" stroke={color} strokeWidth="1.7" fill="none"/></>,
+    food:<><path d="M18 8h1a4 4 0 010 8h-1" stroke={color} strokeWidth="1.7" fill="none" strokeLinecap="round"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" stroke={color} strokeWidth="1.7" fill="none"/><path d="M6 1v3M10 1v3M14 1v3" stroke={color} strokeWidth="1.7" strokeLinecap="round"/></>,
+    clock:<><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.7" fill="none"/><path d="M12 7v5l3 3" stroke={color} strokeWidth="1.7" strokeLinecap="round"/></>,
+    map:<><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke={color} strokeWidth="1.7" fill="none"/><circle cx="12" cy="9" r="2.5" stroke={color} strokeWidth="1.7" fill="none"/></>,
+    users:<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke={color} strokeWidth="1.7" fill="none" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke={color} strokeWidth="1.7" fill="none"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke={color} strokeWidth="1.7" strokeLinecap="round" fill="none"/></>,
+    check:<path d="M4 12l5 5L20 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>,
+    plus:<path d="M12 5v14M5 12h14" stroke={color} strokeWidth="2.2" strokeLinecap="round"/>,
+    trash:<><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke={color} strokeWidth="1.7" strokeLinecap="round" fill="none"/></>,
+    mail:<><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke={color} strokeWidth="1.7" fill="none"/><path d="M22 6l-10 7L2 6" stroke={color} strokeWidth="1.7" strokeLinecap="round" fill="none"/></>,
+    sun:<><circle cx="12" cy="12" r="4" stroke={color} strokeWidth="1.7" fill="none"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke={color} strokeWidth="1.7" strokeLinecap="round"/></>,
+    arrow:<path d="M5 12h14M12 5l7 7-7 7" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>,
+    logout:<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" style={style}>{p[n]}</svg>;
+};
+
+// ── SHARED COMPONENTS ─────────────────────────────────────────
+const Chip = ({label}) => (
+  <span style={{background:T.pill,color:T.pillText,borderRadius:100,padding:'3px 10px',fontSize:11,fontWeight:600}}>{label}</span>
+);
+const ProgressBar = ({value}) => (
+  <div style={{background:T.border,borderRadius:100,height:5,overflow:'hidden'}}>
+    <div style={{width:`${value}%`,height:'100%',background:T.accent,borderRadius:100,transition:'width 0.4s ease'}}/>
+  </div>
+);
+const Header = ({eyebrow,title,sub,onLogout}) => (
+  <div style={{background:T.hdr,padding:'60px 22px 24px',paddingTop:'calc(60px + env(safe-area-inset-top,0px))',position:'relative'}}>
+    {eyebrow && <div style={{fontSize:11,color:T.muted,fontWeight:700,letterSpacing:0.08,marginBottom:6,textTransform:'uppercase'}}>{eyebrow}</div>}
+    <div style={{fontSize:28,fontWeight:800,color:T.text,letterSpacing:-0.5}}>{title}</div>
+    {sub && <div style={{fontSize:14,color:T.muted,marginTop:4}}>{sub}</div>}
+    {onLogout && (
+      <button onClick={onLogout} style={{position:'absolute',top:'calc(16px + env(safe-area-inset-top,0px))',right:16,background:'none',border:'none',cursor:'pointer',padding:8}}>
+        <Icon n="logout" size={20} color={T.muted}/>
+      </button>
+    )}
+  </div>
+);
+const Card = ({children,style={},onClick}) => (
+  <div onClick={onClick} style={{background:T.card,borderRadius:18,padding:'16px',border:`1px solid ${T.border}`,boxShadow:'0 2px 12px rgba(0,0,0,0.04)',...style}}>{children}</div>
+);
+const ErrBox = ({msg}) => msg ? <div style={{fontSize:13,color:T.err,padding:'8px 12px',background:T.errBg,borderRadius:8,marginBottom:12}}>{msg}</div> : null;
+
+// ── LOADING SCREEN ────────────────────────────────────────────
+const LoadingScreen = () => (
+  <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.hdr}}>
+    <div style={{textAlign:'center'}}>
+      <div style={{fontSize:52,marginBottom:12}}>🧺</div>
+      <div style={{fontSize:15,color:T.muted}}>Caricamento...</div>
+    </div>
+  </div>
+);
+
+// ── AUTH SCREEN ───────────────────────────────────────────────
+const AuthScreen = ({hasInvite}) => {
+  const [mode,setMode] = React.useState('login');
+  const [email,setEmail] = React.useState('');
+  const [pass,setPass] = React.useState('');
+  const [nome,setNome] = React.useState('');
+  const [loading,setLoading] = React.useState(false);
+  const [err,setErr] = React.useState('');
+
+  const submit = async () => {
+    setLoading(true); setErr('');
+    try {
+      if (mode==='register') {
+        const {error} = await sb.auth.signUp({email,password:pass,options:{data:{full_name:nome}}});
+        if (error) throw error;
+        setErr('✓ Controlla la tua email per confermare la registrazione!');
+      } else {
+        const {error} = await sb.auth.signInWithPassword({email,password:pass});
+        if (error) throw error;
+      }
+    } catch(e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:T.hdr,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{textAlign:'center',marginBottom:32}}>
+        <div style={{fontSize:52,marginBottom:8}}>🧺</div>
+        {hasInvite
+          ? <><div style={{fontSize:18,fontWeight:800,color:T.text}}>Sei stato invitato!</div><div style={{fontSize:14,color:T.muted,marginTop:4}}>Accedi o registrati per vedere il picnic</div></>
+          : <><div style={{fontSize:24,fontWeight:800,color:T.text}}>Picnic Organizer</div><div style={{fontSize:14,color:T.muted,marginTop:4}}>Organizza il picnic perfetto</div></>
+        }
+      </div>
+
+      <div style={{width:'100%',maxWidth:360,background:'#fff',borderRadius:20,padding:24,boxShadow:'0 4px 24px rgba(0,0,0,0.08)'}}>
+        <div style={{display:'flex',background:T.bg,borderRadius:12,padding:3,marginBottom:20}}>
+          {['login','register'].map(m=>(
+            <button key={m} onClick={()=>{setMode(m);setErr('');}} style={{flex:1,padding:'9px',borderRadius:10,border:'none',cursor:'pointer',background:mode===m?'#fff':'transparent',color:mode===m?T.accent:T.muted,fontWeight:700,fontSize:14,boxShadow:mode===m?'0 1px 4px rgba(0,0,0,0.08)':'none',transition:'all 0.2s'}}>
+              {m==='login'?'Accedi':'Registrati'}
+            </button>
+          ))}
+        </div>
+
+        {mode==='register' && <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Nome completo" style={{...IS,marginBottom:10}}/>}
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" style={{...IS,marginBottom:10}}/>
+        <input value={pass} onChange={e=>setPass(e.target.value)} placeholder="Password (min 6 caratteri)" type="password" onKeyDown={e=>e.key==='Enter'&&submit()} style={{...IS,marginBottom:err?8:16}}/>
+        <ErrBox msg={err}/>
+        <button onClick={submit} disabled={loading} style={{...BS,opacity:loading?0.7:1}}>
+          {loading?'...':(mode==='login'?'Accedi':'Registrati')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── CREATE PICNIC ─────────────────────────────────────────────
+const CreatePicnicScreen = ({user, onCreated}) => {
+  const [name,setName] = React.useState('');
+  const [dateISO,setDateISO] = React.useState('');
+  const [location,setLocation] = React.useState('');
+  const [loading,setLoading] = React.useState(false);
+  const [err,setErr] = React.useState('');
+
+  const create = async () => {
+    if (!name.trim()||!dateISO||!location.trim()) { setErr('Compila tutti i campi'); return; }
+    setLoading(true);
+    try {
+      const dateLabel = new Date(dateISO+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'long'});
+      const {data:pic,error:pe} = await sb.from('picnics').insert({owner_id:user.id,name:name.trim(),date_label:dateLabel,date_iso:dateISO,location:location.trim()}).select().single();
+      if (pe) throw pe;
+
+      await Promise.all([
+        sb.from('food_items').insert([
+          {picnic_id:pic.id,name:'Pane',cat:'cibo'},
+          {picnic_id:pic.id,name:'Frutta',cat:'snack'},
+          {picnic_id:pic.id,name:'Acqua',cat:'bevande'},
+        ]),
+        sb.from('schedule_items').insert([
+          {picnic_id:pic.id,time_label:'11:00',title:'Arrivo e allestimento',sort_order:1},
+          {picnic_id:pic.id,time_label:'12:30',title:'Pranzo',sort_order:2},
+          {picnic_id:pic.id,time_label:'14:30',title:'Giochi e relax',sort_order:3},
+        ])
+      ]);
+
+      const full = await loadFullPicnic(pic.id);
+      onCreated(full);
+    } catch(e) { setErr(e.message); setLoading(false); }
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:T.hdr,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{textAlign:'center',marginBottom:32}}>
+        <div style={{fontSize:52,marginBottom:8}}>🌿</div>
+        <div style={{fontSize:22,fontWeight:800,color:T.text}}>Crea il tuo Picnic</div>
+        <div style={{fontSize:14,color:T.muted,marginTop:4}}>Compila i dettagli per iniziare</div>
+      </div>
+      <div style={{width:'100%',maxWidth:360,background:'#fff',borderRadius:20,padding:24,boxShadow:'0 4px 24px rgba(0,0,0,0.08)'}}>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nome del picnic 🌿" style={{...IS,marginBottom:10}}/>
+        <input value={dateISO} onChange={e=>setDateISO(e.target.value)} type="date" style={{...IS,marginBottom:10}}/>
+        <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Luogo 📍" style={{...IS,marginBottom:err?8:16}}/>
+        <ErrBox msg={err}/>
+        <button onClick={create} disabled={loading} style={{...BS,opacity:loading?0.7:1}}>
+          {loading?'Creazione...':'Crea picnic 🎉'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── SUPABASE HELPERS ──────────────────────────────────────────
+const loadFullPicnic = async (picnicId) => {
+  const [a,b,c,d] = await Promise.all([
+    sb.from('picnics').select('*').eq('id',picnicId).single(),
+    sb.from('food_items').select('*').eq('picnic_id',picnicId).order('created_at'),
+    sb.from('schedule_items').select('*').eq('picnic_id',picnicId).order('sort_order'),
+    sb.from('picnic_guests').select('*').eq('picnic_id',picnicId),
+  ]);
+  return {...a.data, food:b.data||[], schedule:c.data||[], guests:d.data||[]};
+};
+
+// ── HOME SCREEN ───────────────────────────────────────────────
+const HomeScreen = ({picnic, onNav, onLogout}) => {
+  const foodDone = picnic.food.filter(f=>f.done).length;
+  const schedDone = picnic.schedule.filter(s=>s.done).length;
+  const guestsDone = picnic.guests.filter(g=>g.status==='yes').length;
+  const tot = picnic.food.length + picnic.schedule.length;
+  const pct = tot ? Math.round(((foodDone+schedDone)/tot)*100) : 0;
+  const daysLeft = () => {
+    try {
+      const d = Math.ceil((new Date(picnic.date_iso) - new Date())/(1000*60*60*24));
+      if (d<0) return 'Passato'; if (d===0) return 'Oggi! 🎉'; return `${d} giorni`;
+    } catch { return '—'; }
+  };
+
+  return (
+    <div className="screen">
+      <div style={{background:T.hdr,padding:'60px 22px 0',paddingTop:'calc(60px + env(safe-area-inset-top,0px))'}}>
+        <button onClick={onLogout} style={{position:'absolute',top:'calc(16px + env(safe-area-inset-top,0px))',right:16,background:'none',border:'none',cursor:'pointer',padding:8,zIndex:10}}>
+          <Icon n="logout" size={20} color={T.muted}/>
+        </button>
+        <div style={{fontSize:12,color:T.muted,fontWeight:700,letterSpacing:0.08,textTransform:'uppercase',marginBottom:6}}>Prossimo evento</div>
+        <div style={{fontSize:30,fontWeight:800,color:T.text,letterSpacing:-0.5}}>{picnic.name}</div>
+        <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+          <Chip label={`🗓 ${picnic.date_label}`}/>
+          <Chip label={`📍 ${picnic.location}`}/>
+          <Chip label={`👥 ${picnic.guests.length} ospiti`}/>
+        </div>
+        <div style={{margin:'18px 0 0',background:T.accent,borderRadius:18,padding:'18px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.7)',fontWeight:700,marginBottom:4}}>MANCA</div>
+            <div style={{fontSize:26,fontWeight:800,color:'#fff'}}>{daysLeft()}</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.7)',fontWeight:700,marginBottom:4}}>PRONTO</div>
+            <div style={{fontSize:26,fontWeight:800,color:'#fff'}}>{pct}%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:'20px 16px 0'}}>
+        <div style={{fontSize:11,fontWeight:700,color:T.muted,letterSpacing:0.08,textTransform:'uppercase',marginBottom:12}}>Progresso</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+          {[
+            {label:'Cibo & Bevande',done:foodDone,total:picnic.food.length,n:'food',tab:'food'},
+            {label:'Programma',done:schedDone,total:picnic.schedule.length,n:'clock',tab:'schedule'},
+            {label:'Ospiti',done:guestsDone,total:picnic.guests.length,n:'users',tab:'guests'},
+            {label:'Luogo',done:1,total:1,n:'map',tab:'location'},
+          ].map(item=>(
+            <Card key={item.tab} onClick={()=>onNav(item.tab)} style={{cursor:'pointer',padding:'14px'}}>
+              <Icon n={item.n} size={20}/>
+              <div style={{fontSize:13,fontWeight:700,color:T.text,marginTop:10,marginBottom:6}}>{item.label}</div>
+              <div style={{fontSize:12,color:T.muted,marginBottom:8}}>{item.done}/{item.total}</div>
+              <ProgressBar value={item.total?(item.done/item.total)*100:0}/>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── FOOD SCREEN ───────────────────────────────────────────────
+const FoodScreen = ({picnic, setPicnic}) => {
+  const [tab,setTab] = React.useState('all');
+  const [newItem,setNewItem] = React.useState('');
+  const cats = ['all','cibo','bevande','snack'];
+
+  const toggle = async (id, done) => {
+    setPicnic(p=>({...p,food:p.food.map(f=>f.id===id?{...f,done:!done}:f)}));
+    await sb.from('food_items').update({done:!done}).eq('id',id);
+  };
+  const add = async () => {
+    if (!newItem.trim()) return;
+    const item = {picnic_id:picnic.id,name:newItem.trim(),done:false,cat:tab==='all'?'cibo':tab};
+    const {data} = await sb.from('food_items').insert(item).select().single();
+    if (data) { setPicnic(p=>({...p,food:[...p.food,data]})); setNewItem(''); }
+  };
+  const remove = async (id) => {
+    setPicnic(p=>({...p,food:p.food.filter(f=>f.id!==id)}));
+    await sb.from('food_items').delete().eq('id',id);
+  };
+
+  const shown = tab==='all' ? picnic.food : picnic.food.filter(f=>f.cat===tab);
+  const done = picnic.food.filter(f=>f.done).length;
+
+  return (
+    <div className="screen">
+      <Header eyebrow="Lista" title="Cibo & Bevande" sub={`${done} di ${picnic.food.length} pronti`}/>
+      <div style={{padding:'4px 16px 0'}}><ProgressBar value={picnic.food.length?(done/picnic.food.length)*100:0}/></div>
+      <div style={{display:'flex',gap:8,padding:'16px 16px 8px',overflowX:'auto'}}>
+        {cats.map(c=>(
+          <button key={c} onClick={()=>setTab(c)} style={{border:'none',outline:'none',cursor:'pointer',borderRadius:100,padding:'8px 16px',fontSize:13,fontWeight:700,whiteSpace:'nowrap',background:tab===c?T.accent:T.card,color:tab===c?'#fff':T.muted,boxShadow:tab===c?'0 2px 8px rgba(74,144,217,0.3)':'none',transition:'all 0.18s'}}>
+            {c.charAt(0).toUpperCase()+c.slice(1)}
+          </button>
+        ))}
+      </div>
+      <div style={{padding:'0 16px'}}>
+        {shown.map(item=>(
+          <div key={item.id} style={{background:T.card,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:14,marginBottom:8,border:`1px solid ${item.done?T.accent+'44':T.border}`,opacity:item.done?0.7:1,transition:'all 0.2s'}}>
+            <div onClick={()=>toggle(item.id,item.done)} style={{width:26,height:26,borderRadius:9,flexShrink:0,cursor:'pointer',border:`2px solid ${item.done?T.accent:T.border}`,background:item.done?T.accent:'transparent',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.18s'}}>
+              {item.done&&<Icon n="check" size={14} color="#fff"/>}
+            </div>
+            <span onClick={()=>toggle(item.id,item.done)} style={{flex:1,fontSize:16,color:T.text,fontWeight:500,cursor:'pointer',textDecoration:item.done?'line-through':'none'}}>{item.name}</span>
+            <Chip label={item.cat}/>
+            <div onClick={()=>remove(item.id)} style={{cursor:'pointer',padding:'4px',opacity:0.4}}>
+              <Icon n="trash" size={16} color={T.muted}/>
+            </div>
+          </div>
+        ))}
+        <div style={{background:T.card,borderRadius:16,padding:'13px 16px',display:'flex',alignItems:'center',gap:12,border:`1.5px dashed ${T.border}`,marginTop:4}}>
+          <input value={newItem} onChange={e=>setNewItem(e.target.value)} onKeyDown={e=>e.key==='Enter'&&add()} placeholder={`Aggiungi ${tab==='all'?'elemento':tab}…`} style={{flex:1,border:'none',outline:'none',fontSize:16,background:'transparent',color:T.text}}/>
+          <div onClick={add} style={{width:32,height:32,borderRadius:10,background:T.accent,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+            <Icon n="plus" size={16} color="#fff"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── SCHEDULE SCREEN ───────────────────────────────────────────
+const ScheduleScreen = ({picnic, setPicnic}) => {
+  const [showForm,setShowForm] = React.useState(false);
+  const [nTime,setNTime] = React.useState('');
+  const [nTitle,setNTitle] = React.useState('');
+  const [nNote,setNNote] = React.useState('');
+
+  const toggle = async (id,done) => {
+    setPicnic(p=>({...p,schedule:p.schedule.map(s=>s.id===id?{...s,done:!done}:s)}));
+    await sb.from('schedule_items').update({done:!done}).eq('id',id);
+  };
+  const remove = async (id) => {
+    setPicnic(p=>({...p,schedule:p.schedule.filter(s=>s.id!==id)}));
+    await sb.from('schedule_items').delete().eq('id',id);
+  };
+  const add = async () => {
+    if (!nTitle.trim()) return;
+    const maxOrd = Math.max(0,...picnic.schedule.map(s=>s.sort_order||0));
+    const item = {picnic_id:picnic.id,time_label:nTime,title:nTitle.trim(),note:nNote.trim(),done:false,sort_order:maxOrd+1};
+    const {data} = await sb.from('schedule_items').insert(item).select().single();
+    if (data) { setPicnic(p=>({...p,schedule:[...p.schedule,data]})); setNTime('');setNTitle('');setNNote('');setShowForm(false); }
+  };
+  const done = picnic.schedule.filter(s=>s.done).length;
+
+  return (
+    <div className="screen">
+      <Header eyebrow="Timeline" title="Programma" sub={`${picnic.date_label} · ${picnic.location}`}/>
+      <div style={{padding:'4px 16px 0'}}><ProgressBar value={picnic.schedule.length?(done/picnic.schedule.length)*100:0}/></div>
+      <div style={{padding:'20px 16px 0'}}>
+        {picnic.schedule.map((item,i)=>(
+          <div key={item.id} style={{display:'flex',gap:14}}>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:36}}>
+              <div onClick={()=>toggle(item.id,item.done)} style={{width:36,height:36,borderRadius:12,flexShrink:0,cursor:'pointer',background:item.done?T.accent:T.card,border:`2px solid ${item.done?T.accent:T.border}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s',zIndex:1}}>
+                {item.done?<Icon n="check" size={15} color="#fff"/>:<div style={{width:8,height:8,borderRadius:4,background:T.accent,opacity:0.5}}/>}
+              </div>
+              {i<picnic.schedule.length-1&&<div style={{flex:1,width:2,background:T.border,minHeight:24,marginTop:2}}/>}
+            </div>
+            <div style={{flex:1,background:T.card,borderRadius:16,padding:'14px 16px',marginBottom:10,border:`1px solid ${T.border}`,opacity:item.done?0.55:1,transition:'opacity 0.2s'}}>
+              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+                <div>
+                  <div style={{fontSize:12,color:T.accent,fontWeight:800,marginBottom:3}}>{item.time_label}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:T.text}}>{item.title}</div>
+                  {item.note&&<div style={{fontSize:13,color:T.muted,marginTop:3}}>{item.note}</div>}
+                </div>
+                <div onClick={()=>remove(item.id)} style={{cursor:'pointer',padding:'2px',opacity:0.3,marginLeft:8}}>
+                  <Icon n="trash" size={15} color={T.muted}/>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {showForm ? (
+          <Card style={{padding:'16px',marginTop:4}}>
+            <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>Nuova attività</div>
+            <input value={nTime} onChange={e=>setNTime(e.target.value)} placeholder="Orario (es. 14:00)" style={{...IS,marginBottom:8}}/>
+            <input value={nTitle} onChange={e=>setNTitle(e.target.value)} placeholder="Titolo" style={{...IS,marginBottom:8}}/>
+            <input value={nNote} onChange={e=>setNNote(e.target.value)} placeholder="Nota (opzionale)" style={{...IS,marginBottom:12}}/>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setShowForm(false)} style={{flex:1,padding:'11px',borderRadius:12,border:`1px solid ${T.border}`,background:'none',fontSize:15,fontWeight:600,color:T.muted,cursor:'pointer'}}>Annulla</button>
+              <button onClick={add} style={{flex:1,padding:'11px',borderRadius:12,border:'none',background:T.accent,fontSize:15,fontWeight:700,color:'white',cursor:'pointer'}}>Aggiungi</button>
+            </div>
+          </Card>
+        ) : (
+          <div onClick={()=>setShowForm(true)} style={{background:T.card,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',border:`1.5px dashed ${T.border}`,marginTop:4}}>
+            <Icon n="plus" size={18}/><span style={{fontSize:15,fontWeight:700,color:T.accent}}>Aggiungi attività</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── LOCATION SCREEN ───────────────────────────────────────────
+const LocationScreen = ({picnic}) => (
+  <div className="screen">
+    <Header eyebrow="Destinazione" title="Luogo"/>
+    <div style={{margin:'16px 16px 0',borderRadius:20,overflow:'hidden',height:210,position:'relative'}}>
+      <svg width="100%" height="100%" viewBox="0 0 400 210" preserveAspectRatio="xMidYMid slice">
+        <rect width="400" height="210" fill="#E4F0FF"/>
+        <rect x="0" y="90" width="400" height="15" fill="#C8DCF5" opacity="0.6"/>
+        <rect x="120" y="0" width="12" height="210" fill="#C8DCF5" opacity="0.6"/>
+        <circle cx="80" cy="70" r="28" fill="#B8D6F0" opacity="0.4"/>
+        <circle cx="290" cy="150" r="32" fill="#B8D6F0" opacity="0.4"/>
+        <circle cx="200" cy="100" r="18" fill={T.accent}/>
+        <circle cx="200" cy="100" r="10" fill="white"/>
+        <circle cx="200" cy="100" r="5" fill={T.accent}/>
+      </svg>
+      <a href={`https://maps.apple.com/?q=${encodeURIComponent(picnic.location)}`} style={{position:'absolute',bottom:12,right:12,background:'white',borderRadius:10,padding:'7px 14px',fontSize:13,fontWeight:700,color:T.accent,boxShadow:'0 2px 10px rgba(0,0,0,0.1)',cursor:'pointer',textDecoration:'none'}}>
+        Apri in Maps →
+      </a>
+    </div>
+    <div style={{padding:'16px 16px 0'}}>
+      <Card style={{marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+          <div style={{width:46,height:46,borderRadius:14,background:T.pill,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <Icon n="map" size={22}/>
+          </div>
+          <div>
+            <div style={{fontSize:17,fontWeight:800,color:T.text}}>{picnic.location}</div>
+            <div style={{fontSize:14,color:T.muted,marginTop:2}}>Zona West Meadow · Area B</div>
+          </div>
+        </div>
+      </Card>
+      <div style={{background:T.accent,borderRadius:18,padding:'18px',marginBottom:12,display:'flex',alignItems:'center',gap:14}}>
+        <Icon n="sun" size={34} color="rgba(255,255,255,0.9)"/>
+        <div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.7)',fontWeight:700}}>PREVISIONI · {picnic.date_label}</div>
+          <div style={{fontSize:20,fontWeight:800,color:'white',marginTop:3}}>Soleggiato, 24°C</div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// ── GUESTS SCREEN ─────────────────────────────────────────────
+const GuestsScreen = ({picnic, setPicnic}) => {
+  const [nome,setNome] = React.useState('');
+  const [email,setEmail] = React.useState('');
+  const [showForm,setShowForm] = React.useState(false);
+  const [loading,setLoading] = React.useState(false);
+  const [sent,setSent] = React.useState(null);
+  const confirmed = picnic.guests.filter(g=>g.status==='yes').length;
+  const pending   = picnic.guests.filter(g=>g.status==='pending').length;
+  const sColor = s => s==='yes'?T.accent:s==='no'?T.err:T.muted;
+  const sLabel = s => s==='yes'?'✓':s==='no'?'✕':'?';
+
+  const invite = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    const {data:guest,error} = await sb.from('picnic_guests')
+      .insert({picnic_id:picnic.id,email:email.trim(),name:nome.trim()||email.split('@')[0],status:'pending'})
+      .select().single();
+
+    if (!error && guest) {
+      setPicnic(p=>({...p,guests:[...p.guests,guest]}));
+      const link = `${APP_URL}/?invite=${guest.invite_token}`;
+      const subj = encodeURIComponent(`Sei invitato al picnic: ${picnic.name}!`);
+      const body = encodeURIComponent(
+        `Ciao ${guest.name}!\n\nSei stato invitato al picnic "${picnic.name}".\n\n`+
+        `📅 ${picnic.date_label}   📍 ${picnic.location}\n\n`+
+        `Clicca qui per confermare la tua presenza:\n${link}\n\nA presto! 🧺`
+      );
+      window.open(`mailto:${email.trim()}?subject=${subj}&body=${body}`);
+      setSent(guest.name); setNome(''); setEmail(''); setShowForm(false);
+      setTimeout(()=>setSent(null), 3000);
+    }
+    setLoading(false);
+  };
+
+  const remove = async (id) => {
+    setPicnic(p=>({...p,guests:p.guests.filter(g=>g.id!==id)}));
+    await sb.from('picnic_guests').delete().eq('id',id);
+  };
+
+  return (
+    <div className="screen">
+      <Header eyebrow="Gruppo" title="Ospiti"/>
+      <div style={{display:'flex',gap:10,padding:'16px 16px 0'}}>
+        {[{label:'Invitati',val:picnic.guests.length},{label:'Confermati',val:confirmed},{label:'In attesa',val:pending}].map(s=>(
+          <Card key={s.label} style={{flex:1,textAlign:'center',padding:'14px 8px'}}>
+            <div style={{fontSize:24,fontWeight:800,color:T.accent}}>{s.val}</div>
+            <div style={{fontSize:11,color:T.muted,fontWeight:600,marginTop:2}}>{s.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{padding:'16px 16px 0'}}>
+        {sent && (
+          <div style={{background:'#E8F8EE',border:'1px solid #4CAF50',borderRadius:12,padding:'12px 16px',marginBottom:12,fontSize:14,color:'#2e7d32',fontWeight:600}}>
+            ✓ Email di invito aperta per {sent}!
+          </div>
+        )}
+
+        <div style={{fontSize:11,fontWeight:700,color:T.muted,letterSpacing:0.08,textTransform:'uppercase',marginBottom:12}}>Ospiti</div>
+        {picnic.guests.map(g=>(
+          <div key={g.id} style={{background:T.card,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:14,marginBottom:8,border:`1px solid ${T.border}`}}>
+            <div style={{width:42,height:42,borderRadius:13,flexShrink:0,background:T.accent+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,fontWeight:800,color:T.accent}}>
+              {(g.name||'?')[0].toUpperCase()}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,color:T.text}}>{g.name}</div>
+              <div style={{fontSize:12,color:T.muted}}>{g.email}</div>
+            </div>
+            <div style={{width:28,height:28,borderRadius:9,background:sColor(g.status)+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:sColor(g.status)}}>
+              {sLabel(g.status)}
+            </div>
+            <div onClick={()=>remove(g.id)} style={{cursor:'pointer',padding:'4px',opacity:0.3}}>
+              <Icon n="trash" size={15} color={T.muted}/>
+            </div>
+          </div>
+        ))}
+
+        {showForm ? (
+          <Card style={{padding:'16px',marginTop:4}}>
+            <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>Invita qualcuno</div>
+            <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Nome" style={{...IS,marginBottom:8}}/>
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email *" type="email" style={{...IS,marginBottom:12}}/>
+            <div style={{fontSize:12,color:T.muted,marginBottom:12,padding:'8px 12px',background:T.pill,borderRadius:8}}>
+              📧 Si aprirà la tua app email con il messaggio di invito già pronto
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setShowForm(false)} style={{flex:1,padding:'11px',borderRadius:12,border:`1px solid ${T.border}`,background:'none',fontSize:15,fontWeight:600,color:T.muted,cursor:'pointer'}}>Annulla</button>
+              <button onClick={invite} disabled={loading} style={{flex:1,padding:'11px',borderRadius:12,border:'none',background:T.accent,fontSize:15,fontWeight:700,color:'white',cursor:'pointer'}}>
+                <Icon n="mail" size={14} color="#fff" style={{marginRight:6,verticalAlign:'middle'}}/>Invia
+              </button>
+            </div>
+          </Card>
+        ) : (
+          <div onClick={()=>setShowForm(true)} style={{background:T.card,borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',border:`1.5px dashed ${T.border}`,marginTop:4}}>
+            <Icon n="mail" size={18}/><span style={{fontSize:15,fontWeight:700,color:T.accent}}>Invita qualcuno via email</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── TAB BAR ───────────────────────────────────────────────────
+const TabBar = ({active, onNav}) => {
+  const tabs=[{id:'home',n:'home',l:'Home'},{id:'food',n:'food',l:'Cibo'},{id:'schedule',n:'clock',l:'Orari'},{id:'location',n:'map',l:'Luogo'},{id:'guests',n:'users',l:'Ospiti'}];
+  return (
+    <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:'rgba(255,255,255,0.94)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',borderTop:`1px solid ${T.border}`,display:'flex',paddingBottom:'env(safe-area-inset-bottom,0px)',zIndex:100}}>
+      {tabs.map(t=>(
+        <div key={t.id} onClick={()=>onNav(t.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:'pointer',padding:'10px 0 8px'}}>
+          <Icon n={t.n} size={24} color={active===t.id?T.accent:T.muted}/>
+          <div style={{fontSize:10,fontWeight:active===t.id?700:500,color:active===t.id?T.accent:T.muted}}>{t.l}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── GUEST APP ─────────────────────────────────────────────────
+const GuestApp = ({user, picnic, guest, onLogout}) => {
+  const [status,setStatus] = React.useState(guest.status);
+  const [saving,setSaving] = React.useState(false);
+
+  const updateStatus = async (s) => {
+    setSaving(true);
+    await sb.from('picnic_guests').update({status:s}).eq('id',guest.id);
+    setStatus(s); setSaving(false);
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:T.bg}}>
+      <div style={{background:T.hdr,padding:'60px 22px 24px',paddingTop:'calc(60px + env(safe-area-inset-top,0px))',position:'relative'}}>
+        <button onClick={onLogout} style={{position:'absolute',top:'calc(16px + env(safe-area-inset-top,0px))',right:16,background:'none',border:'none',cursor:'pointer',padding:8}}>
+          <Icon n="logout" size={20} color={T.muted}/>
+        </button>
+        <div style={{fontSize:11,color:T.muted,fontWeight:700,textTransform:'uppercase',marginBottom:6}}>Invito</div>
+        <div style={{fontSize:28,fontWeight:800,color:T.text}}>{picnic.name}</div>
+        <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+          <Chip label={`🗓 ${picnic.date_label}`}/>
+          <Chip label={`📍 ${picnic.location}`}/>
+        </div>
+      </div>
+
+      <div style={{padding:'20px 16px 0'}}>
+        {/* RSVP */}
+        {status==='pending' ? (
+          <Card style={{marginBottom:16,padding:'24px',textAlign:'center'}}>
+            <div style={{fontSize:18,fontWeight:700,color:T.text,marginBottom:4}}>Partecipi?</div>
+            <div style={{fontSize:14,color:T.muted,marginBottom:20}}>Ciao {guest.name}, facci sapere!</div>
+            <div style={{display:'flex',gap:12}}>
+              <button onClick={()=>updateStatus('no')} disabled={saving} style={{flex:1,padding:'12px',borderRadius:12,border:`1.5px solid ${T.err}`,background:'transparent',fontSize:15,fontWeight:700,color:T.err,cursor:'pointer'}}>✕ Non posso</button>
+              <button onClick={()=>updateStatus('yes')} disabled={saving} style={{flex:1,padding:'12px',borderRadius:12,border:'none',background:T.accent,fontSize:15,fontWeight:700,color:'white',cursor:'pointer'}}>✓ Ci sono!</button>
+            </div>
+          </Card>
+        ) : (
+          <Card style={{marginBottom:16,padding:'20px',textAlign:'center'}}>
+            <div style={{fontSize:36,marginBottom:8}}>{status==='yes'?'🎉':'😔'}</div>
+            <div style={{fontSize:16,fontWeight:700,color:T.text}}>{status==='yes'?'Ottimo, ci vediamo al picnic!':'Peccato, speriamo alla prossima!'}</div>
+            <button onClick={()=>setStatus('pending')} style={{marginTop:10,fontSize:12,color:T.muted,background:'none',border:'none',cursor:'pointer',textDecoration:'underline'}}>Cambia risposta</button>
+          </Card>
+        )}
+
+        {/* Schedule preview */}
+        {picnic.schedule?.length > 0 && (
+          <Card style={{marginBottom:12}}>
+            <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>🕐 Programma</div>
+            {picnic.schedule.map(s=>(
+              <div key={s.id} style={{display:'flex',gap:12,paddingBottom:8,alignItems:'flex-start'}}>
+                <div style={{fontSize:12,color:T.accent,fontWeight:700,minWidth:40}}>{s.time_label}</div>
+                <div style={{fontSize:14,color:T.text}}>{s.title}</div>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        {/* Confirmed guests */}
+        <Card style={{marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:12}}>👥 Chi viene</div>
+          {picnic.guests?.filter(g=>g.status==='yes').length === 0
+            ? <div style={{fontSize:13,color:T.muted}}>Ancora nessuna conferma</div>
+            : picnic.guests.filter(g=>g.status==='yes').map(g=>(
+              <div key={g.id} style={{display:'flex',alignItems:'center',gap:10,paddingBottom:8}}>
+                <div style={{width:32,height:32,borderRadius:10,background:T.accent+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:T.accent}}>
+                  {(g.name||'?')[0].toUpperCase()}
+                </div>
+                <span style={{fontSize:14,color:T.text,fontWeight:500}}>{g.name}</span>
+                <span style={{marginLeft:'auto',fontSize:12,color:'#4CAF50',fontWeight:700}}>✓</span>
+              </div>
+            ))
+          }
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ── APP ROOT ──────────────────────────────────────────────────
+function App() {
+  const [st,setSt] = React.useState('loading');
+  // st: loading | auth | create_picnic | organizer | guest
+  const [user,setUser] = React.useState(null);
+  const [picnic,setPicnic] = React.useState(null);
+  const [guestRec,setGuestRec] = React.useState(null);
+  const [inviteToken,setInviteToken] = React.useState(null);
+  const [screen,setScreen] = React.useState('home');
+
+  React.useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('invite');
+    if (token) setInviteToken(token);
+
+    sb.auth.getSession().then(({data:{session}})=>{
+      if (session?.user) loadForUser(session.user, token);
+      else setSt('auth');
+    });
+
+    const {data:{subscription}} = sb.auth.onAuthStateChange(async(event,session)=>{
+      if (event==='SIGNED_IN' && session?.user) {
+        const t = new URLSearchParams(window.location.search).get('invite') || inviteToken;
+        loadForUser(session.user, t);
+      }
+      if (event==='SIGNED_OUT') { setUser(null); setPicnic(null); setGuestRec(null); setSt('auth'); }
+    });
+    return ()=>subscription.unsubscribe();
+  },[]);
+
+  const loadForUser = async (u, token) => {
+    setUser(u);
+
+    // Claim invite if token present
+    if (token) {
+      await sb.rpc('accept_invite',{p_token:token,p_user_id:u.id});
+      window.history.replaceState({},'',window.location.pathname);
+      setInviteToken(null);
+    }
+
+    // Check if organizer
+    const {data:owned} = await sb.from('picnics').select('id').eq('owner_id',u.id);
+    if (owned?.length>0) {
+      const full = await loadFullPicnic(owned[0].id);
+      setPicnic(full); setSt('organizer'); return;
+    }
+
+    // Check if guest
+    const {data:gr} = await sb.from('picnic_guests').select('*').eq('user_id',u.id).maybeSingle();
+    if (gr) {
+      setGuestRec(gr);
+      const full = await loadFullPicnic(gr.picnic_id);
+      setPicnic(full); setSt('guest'); return;
+    }
+
+    setSt('create_picnic');
+  };
+
+  const logout = async () => sb.auth.signOut();
+
+  if (st==='loading') return <LoadingScreen/>;
+  if (st==='auth') return <AuthScreen hasInvite={!!inviteToken}/>;
+  if (st==='create_picnic') return <CreatePicnicScreen user={user} onCreated={p=>{setPicnic(p);setSt('organizer');}}/>;
+  if (st==='guest') return <GuestApp user={user} picnic={picnic} guest={guestRec} onLogout={logout}/>;
+
+  const props = {picnic, setPicnic, onNav:setScreen, onLogout:logout};
+  return (
+    <>
+      {screen==='home' && <HomeScreen {...props}/>}
+      {screen==='food' && <FoodScreen {...props}/>}
+      {screen==='schedule' && <ScheduleScreen {...props}/>}
+      {screen==='location' && <LocationScreen {...props}/>}
+      {screen==='guests' && <GuestsScreen {...props}/>}
+      <TabBar active={screen} onNav={setScreen}/>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  }
+</script>
+</body>
+</html>
