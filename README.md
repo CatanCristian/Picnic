@@ -158,7 +158,6 @@ Supabase protegge i dati con RLS:
 
 ## 📝 Note
 
-- L'app è in **italiano**
 - Tutto in un unico file `index.html` (nessun build richiesto)
 - Funziona su desktop, tablet e mobile
 - PWA: installabile come app nativa
